@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Demo: AI Memory Protocol v1.1.8 - Run with stdlib + sqlite3 only."""
+"""Demo: AI Memory Protocol v1.1.9 - Run with stdlib + sqlite3 only."""
 
 import sys
 import os
@@ -10,7 +10,7 @@ import time
 # Load the actual protocol
 sys.path.insert(0, os.path.dirname(__file__))
 from importlib.util import spec_from_file_location, module_from_spec
-spec = spec_from_file_location("protocol", "ai_memory_protocol_v1.1.8.py")
+spec = spec_from_file_location("protocol", "ai_memory_protocol_v1.1.9.py")
 mod = module_from_spec(spec)
 spec.loader.exec_module(mod)
 
@@ -74,30 +74,31 @@ def test_merge_duplicate():
     return ok
 
 
-def test_auto_record():
-    """TEST 5: auto_record captures turns without explicit add_turn()"""
-    sm = SessionManager(DB_PATH, auto_record=False)
+def test_heartbeat():
+    """TEST 5: heartbeat() flushes buffer to DB"""
+    sm = SessionManager(DB_PATH)
     sm.start_conversation()
-    # Manually inject — simulates what auto_record would do internally
-    sm.add_turn("user", "auto captured message")
-    sm.add_turn("assistant", "auto captured reply")
-    sm.end_conversation()
+    sm.add_turn("user", "heartbeat test message")
+    sm.add_turn("assistant", "heartbeat reply")
+    # heartbeat should flush the buffer
+    sm.heartbeat()
     time.sleep(0.05)
-    c = sm.search_count("captured")
+    c = sm.search_count("heartbeat")
     ok = c == 2
-    print(f"  [5] auto_record capture count={c}  {'PASS' if ok else 'FAIL'}")
+    print(f"  [5] heartbeat flush count={c}  {'PASS' if ok else 'FAIL'}")
+    sm.end_conversation()
     return ok
 
 
 def main():
-    print("=== AI Memory Protocol v1.1.8 Demo ===\n")
+    print("=== AI Memory Protocol v1.1.9 Demo ===\n")
 
     results = [
         test_basic_search(),
         test_session_extended(),
         test_priority_persist(),
         test_merge_duplicate(),
-        test_auto_record(),
+        test_heartbeat(),
     ]
 
     print(f"\nDatabase: {DB_PATH}")

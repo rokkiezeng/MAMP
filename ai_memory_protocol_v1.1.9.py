@@ -2400,6 +2400,10 @@ class AIMemoryDB:
         """Alias for list_sessions with no filters — returns all sessions."""
         return self.list_sessions(include_archived=include_archived)
 
+    def get_open_sessions(self) -> List[Dict]:
+        """Return all open (un-ended) sessions."""
+        return self.list_sessions(status="open", include_archived=False)
+
 
 # ============================================================
 # Session Manager
@@ -2910,9 +2914,6 @@ class SessionManager:
     def get_total_size(self) -> int:
         return self.db.get_total_size()
 
-    def get_all_sessions(self, include_archived: bool = False) -> List[Dict]:
-        return self.db.get_all_sessions(include_archived)
-
     def search_batch(self, queries: List[str], mode: str = "OR",
                      limit_per_query: int = 10,
                      from_date: Optional[str] = None,
@@ -2941,14 +2942,6 @@ class SessionManager:
     def import_session_versioned(self, json_str: str) -> Optional[str]:
         """v1.2.0: versioned import."""
         return self.db.import_session_versioned(json_str)
-
-    def vacuum(self, compress: bool = False, min_age_days: int = 7,
-               squash_spaces: bool = False,
-               max_memory_mb: int = 256,
-               batch_size: int = 500,
-               compress_level: int = 6) -> bool:
-        """v1.1.4: squash_spaces added."""
-        return self.db.vacuum(compress, min_age_days, squash_spaces)
 
 
 # ============================================================

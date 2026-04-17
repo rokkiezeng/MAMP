@@ -2,7 +2,7 @@
 name: mamp-memory
 description: Mark AI Memory Protocol — persistent, searchable session memory for AI agents. SQLite-only, zero external dependencies.
 author: LeoTseng
-version: 1.1.8
+version: 1.1.9
 license: MIT-0
 security:
   credential_access: false  # Local SQLite only, no external services or credentials
@@ -31,7 +31,7 @@ Gives AI agents persistent, searchable memory using SQLite.
 
 ```python
 from importlib.util import spec_from_file_location, module_from_spec
-spec = spec_from_file_location("mamp", "ai_memory_protocol_v1.1.8.py")
+spec = spec_from_file_location("mamp", "ai_memory_protocol_v1.1.9.py")
 mod = module_from_spec(spec)
 spec.loader.exec_module(mod)
 
@@ -41,11 +41,14 @@ sm.start_conversation()
 sm.add_turn("user", "I prefer dark mode")
 sm.add_turn("assistant", "Noted")
 
-# Auto mode (v1.1.8) — auto-captures turns without manual add_turn()
+# Auto mode (v1.1.8+) — auto-captures turns without manual add_turn()
 sm = mod.SessionManager(auto_record=True)
 sm.start_conversation()
 # ... conversations are recorded automatically ...
 sm.stop()  # flushes buffer and disables auto_record
+
+# Heartbeat (v1.1.9+) — called externally every ~5 min via Hermes cron
+# sm.heartbeat()  # flushes buffer + closes idle sessions (>30 min)
 
 # Explicit db_path (recommended)
 sm = mod.SessionManager(db_path="./memory.db", auto_record=True)
