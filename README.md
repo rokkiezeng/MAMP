@@ -26,7 +26,7 @@ python3 demo.py   # runs 5 demos, shows PASS/FAIL
 import sys
 sys.path.insert(0, '.')
 from importlib.util import spec_from_file_location, module_from_spec
-spec = spec_from_file_location("mamp", "ai_memory_protocol_v1.1.5.py")
+spec = spec_from_file_location("mamp", "ai_memory_protocol_v1.1.6.py")
 mod = module_from_spec(spec)
 spec.loader.exec_module(mod)
 
@@ -44,7 +44,7 @@ Or use `demo.py` as a working reference.
 ## Project Structure
 
 ```
-ai_memory_protocol_v1.1.5.py   ← protocol implementation
+ai_memory_protocol_v1.1.6.py   ← protocol implementation
 demo.py                        ← working demo (reference)
 CHANGELOG.md           ← full changelog
 iteration_guide.md             ← how we iterate

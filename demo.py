@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Demo: AI Memory Protocol v1.1.5 - Run with stdlib + sqlite3 only."""
+"""Demo: AI Memory Protocol v1.1.6 - Run with stdlib + sqlite3 only."""
 
 import sys
 import os
@@ -9,7 +9,7 @@ import importlib
 # Load the actual protocol
 sys.path.insert(0, os.path.dirname(__file__))
 from importlib.util import spec_from_file_location, module_from_spec
-spec = spec_from_file_location("protocol", "ai_memory_protocol_v1.1.5.py")
+spec = spec_from_file_location("protocol", "ai_memory_protocol_v1.1.6.py")
 mod = module_from_spec(spec)
 spec.loader.exec_module(mod)
 
@@ -23,6 +23,7 @@ def test_basic_search():
     sm.start_conversation()
     sm.add_turn("user", "I love finance and glass bottles")
     sm.add_turn("assistant", "Interesting hobby")
+    sm.end_conversation()          # v1.1.6: flushes buffer to DB
     import time; time.sleep(0.05)
     c1 = sm.search_count("finance")
     c2 = sm.search_count("glass")
@@ -37,6 +38,7 @@ def test_session_extended():
     sid = sm.start_conversation()
     sm.add_turn("user", "Hello world")
     sm.add_turn("assistant", "Hi there")
+    sm.end_conversation()          # v1.1.6: flushes buffer to DB
     import time; time.sleep(0.05)
     s = sm.get_session_extended(sid)
     ok = s.get("total_turns") == 2
@@ -62,6 +64,7 @@ def test_merge_duplicate():
     sid2 = sm.start_conversation()
     sm.add_turn("user", "msg A")
     sm.add_turn("user", "msg B")
+    sm.end_conversation()          # v1.1.6: flushes buffer to DB
     import time; time.sleep(0.05)
     sm.merge_sessions(sid2, sid1, conflict_strategy="duplicate")
     s = sm.get_session_extended(sid1)
@@ -76,6 +79,7 @@ def test_tag_filter():
     sm.start_conversation()
     sm.add_turn("user", "finance topic", tags=["finance"])
     sm.add_turn("user", "other topic", tags=["other"])
+    sm.end_conversation()          # v1.1.6: flushes buffer to DB
     import time; time.sleep(0.05)
     c = sm.search_count("topic", tag_filter=["finance"])
     ok = c >= 1
@@ -84,7 +88,7 @@ def test_tag_filter():
 
 
 def main():
-    print("=== AI Memory Protocol v1.1.5 Demo ===\n")
+    print("=== AI Memory Protocol v1.1.6 Demo ===\n")
 
     results = [
         test_basic_search(),

@@ -2,7 +2,7 @@
 name: mamp
 description: Mark AI Memory Protocol — persistent, searchable session memory for AI agents. SQLite-only, zero external dependencies.
 author: LeoTseng
-version: 1.1.5
+version: 1.1.6
 license: MIT-0
 ---
 
@@ -28,11 +28,16 @@ Gives AI agents persistent, searchable memory using SQLite.
 
 ```python
 from importlib.util import spec_from_file_location, module_from_spec
-spec = spec_from_file_location("mamp", "ai_memory_protocol_v1.1.5.py")
+spec = spec_from_file_location("mamp", "ai_memory_protocol_v1.1.6.py")
 mod = module_from_spec(spec)
 spec.loader.exec_module(mod)
 
-sm = mod.SessionManager(db_path)
+# Default: writes to ./mark_memory.db in current directory
+sm = mod.SessionManager()
+# Or specify path explicitly:
+sm = mod.SessionManager(db_path="./memory.db")
+# Or via environment variable:
+# export MARK_MEMORY_DB=/path/to/memory.db
 
 # Start a conversation
 sid = sm.start_conversation()

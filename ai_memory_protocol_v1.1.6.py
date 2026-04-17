@@ -96,7 +96,7 @@ from typing import List, Dict, Any, Optional
 # Protocol Constants
 # ============================================================
 
-PROTOCOL_VERSION = "1.1.5"
+PROTOCOL_VERSION = "1.1.6"
 DB_VERSION = 14
 
 # Priority levels — runtime-configurable
@@ -2388,12 +2388,23 @@ class AIMemoryDB:
 class SessionManager:
     """High-level controller for AI session memory."""
 
+    # ------------------------------------------------------------------
+    # Buffered Write — v1.1.6: batch in memory, flush on batch size
+    # or end_conversation() for ~300x throughput vs per-turn commits.
+    # Risk: crash before flush loses the buffered turns (negligible
+    # for human-paced conversations; acceptable trade-off).
+    # ------------------------------------------------------------------
+    BATCH_SIZE: int = 50          # flush when buffer reaches this many
+
     def __init__(self, db_path: str = DEFAULT_DB_PATH):
         self.db = AIMemoryDB(db_path)
         self.current_session_id: Optional[str] = None
         self.turn_count: int = 0
         self._pending: List[str] = []
         self._session_start_count: int = 0
+        # Buffered write state (v1.1.6)
+        self._write_buf: List[Dict] = []   # [{"role":..., "content":..., "priority":..., "tags":..., "metadata":...}]
+        self._buf_first_index: int = 0     # turn_index of first item in buffer
 
     def add_priority_level(self, name: str, weight: int) -> bool:
         return self.db.add_priority_level(name, weight)
@@ -2503,6 +2514,8 @@ class SessionManager:
     def end_conversation(self, summary: str = "") -> bool:
         if not self.current_session_id:
             return True
+        # Flush any remaining buffered turns before ending session
+        self._flush()
         if self._pending:
             self.db.set_pending(self.current_session_id, self._pending)
         self.db.end_session(self.current_session_id, summary)
@@ -2510,14 +2523,34 @@ class SessionManager:
         self.turn_count = 0
         self._session_start_count = 0
         self._pending = []
+        self._write_buf.clear()
+        self._buf_first_index = 0
         return True
 
     def reset(self) -> bool:
+        self._flush()  # flush before resetting
         self.current_session_id = None
         self.turn_count = 0
         self._pending = []
         self._session_start_count = 0
+        self._write_buf.clear()
+        self._buf_first_index = 0
         return True
+
+    def _flush(self) -> int:
+        """Flush write buffer to DB. Returns rows inserted. Call on batch full or session end."""
+        if not self._write_buf or not self.current_session_id:
+            return 0
+        rows = self.db.add_turns_batch(
+            self.current_session_id, self._write_buf, start_index=self._buf_first_index
+        )
+        self._write_buf.clear()
+        self._buf_first_index = self.turn_count
+        return rows
+
+    def flush(self) -> int:
+        """Manually trigger a flush. Returns rows inserted."""
+        return self._flush()
 
     def add_turn(self, role: str, content: str,
                  priority: str = PRIORITY_NORMAL,
@@ -2525,19 +2558,30 @@ class SessionManager:
                  metadata: Optional[Dict] = None) -> bool:
         if not self.current_session_id:
             self.start_conversation()
-        result = self.db.store_turn(
-            self.current_session_id, self.turn_count, role, content,
-            priority=priority, tags=tags, metadata=metadata
-        )
+        self._write_buf.append({
+            "role": role,
+            "content": content,
+            "priority": priority,
+            "tags": tags or [],
+            "metadata": metadata or {},
+        })
         self.turn_count += 1
-        return result
+        # Auto-flush when batch is full
+        if len(self._write_buf) >= self.BATCH_SIZE:
+            self._flush()
+        return True
 
     def add_turns_batch(self, turns: List[Dict]) -> int:
         if not self.current_session_id:
             self.start_conversation()
-        return self.db.add_turns_batch(
+        # Flush buffered single turns first so they land before the batch
+        self._flush()
+        n = self.db.add_turns_batch(
             self.current_session_id, turns, start_index=self.turn_count
         )
+        self.turn_count += n
+        self._buf_first_index = self.turn_count
+        return n
 
     def add_pending(self, item: str) -> bool:
         self._pending.append(item)
