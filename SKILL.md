@@ -2,7 +2,7 @@
 name: mamp
 description: Mark AI Memory Protocol — persistent, searchable session memory for AI agents. SQLite-only, zero external dependencies.
 author: LeoTseng
-version: 1.1.6
+version: 1.1.7
 license: MIT-0
 ---
 
