@@ -19,6 +19,7 @@ python3 demo.py   # runs 5 demos, shows PASS/FAIL
 - **Cross-session recall** — search memories across all sessions
 - **Priority levels** — tag and filter by importance
 - **SQLite backend** — stdlib + sqlite3 only, no external deps
+- **Auto-record mode** — captures turns automatically without manual add_turn()
 
 ## Usage
 
@@ -26,17 +27,21 @@ python3 demo.py   # runs 5 demos, shows PASS/FAIL
 import sys
 sys.path.insert(0, '.')
 from importlib.util import spec_from_file_location, module_from_spec
-spec = spec_from_file_location("mamp", "ai_memory_protocol_v1.1.6.py")
+spec = spec_from_file_location("mamp", "ai_memory_protocol_v1.1.8.py")
 mod = module_from_spec(spec)
 spec.loader.exec_module(mod)
 
-sm = mod.SessionManager('.')
-sid = sm.start_conversation()
+# Manual mode
+sm = mod.SessionManager()
+sm.start_conversation()
 sm.add_turn("user", "I prefer dark mode")
 sm.add_turn("assistant", "Got it")
-count = sm.search_count("dark mode")       # → 1
-results = sm.search("dark mode", limit=5)  # → matching turns
-s = sm.get_session_extended(sid)           # → full session
+
+# Auto mode (v1.1.8) — auto-captures turns
+sm = mod.SessionManager(auto_record=True)
+sm.start_conversation()
+# ... turns captured automatically ...
+sm.stop()
 ```
 
 Or use `demo.py` as a working reference.
@@ -44,9 +49,9 @@ Or use `demo.py` as a working reference.
 ## Project Structure
 
 ```
-ai_memory_protocol_v1.1.6.py   ← protocol implementation
+ai_memory_protocol_v1.1.8.py   ← protocol implementation
 demo.py                        ← working demo (reference)
-CHANGELOG.md           ← full changelog
+CHANGELOG.md                   ← full changelog
 iteration_guide.md             ← how we iterate
 LICENSE                        ← MIT-0
 ```

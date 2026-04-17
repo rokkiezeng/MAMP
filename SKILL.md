@@ -1,12 +1,12 @@
 ---
-name: mamp
+name: mamp-memory
 description: Mark AI Memory Protocol — persistent, searchable session memory for AI agents. SQLite-only, zero external dependencies.
 author: LeoTseng
-version: 1.1.6
+version: 1.1.8
 license: MIT-0
 security:
   credential_access: false  # Local SQLite only, no external services or credentials
-  data_persistence: true     # Writes to a local .db file on disk
+  data_persistence: true   # Writes to a local .db file on disk
 ---
 
 # MAMP — Mark AI Memory Protocol
@@ -31,36 +31,27 @@ Gives AI agents persistent, searchable memory using SQLite.
 
 ```python
 from importlib.util import spec_from_file_location, module_from_spec
-spec = spec_from_file_location("mamp", "ai_memory_protocol_v1.1.6.py")
+spec = spec_from_file_location("mamp", "ai_memory_protocol_v1.1.8.py")
 mod = module_from_spec(spec)
 spec.loader.exec_module(mod)
 
-# Default: writes to ./mark_memory.db in current directory
+# Manual mode — explicit add_turn() calls
 sm = mod.SessionManager()
-# Or specify path explicitly (recommended):
-sm = mod.SessionManager(db_path="./memory.db")
-# Or via environment variable:
-# export MARK_MEMORY_DB=/path/to/memory.db
-# (overrides default and db_path parameter)
-
-# Start a conversation
-sid = sm.start_conversation()
-
-# Add a message
+sm.start_conversation()
 sm.add_turn("user", "I prefer dark mode")
 sm.add_turn("assistant", "Noted")
 
-# Search across all sessions
-count = sm.search_count("dark mode")
-results = sm.search("dark mode", limit=5)
+# Auto mode (v1.1.8) — auto-captures turns without manual add_turn()
+sm = mod.SessionManager(auto_record=True)
+sm.start_conversation()
+# ... conversations are recorded automatically ...
+sm.stop()  # flushes buffer and disables auto_record
 
-# Get full session
-sess = sm.get_session_extended(sid)
-# → {'total_turns': 2, 'turns': [...], 'meta': {...}}
+# Explicit db_path (recommended)
+sm = mod.SessionManager(db_path="./memory.db", auto_record=True)
 
-# Tag and filter
-sm.add_turn("user", "finance topic", tags=["finance"])
-c = sm.search_count("topic", tag_filter=["finance"])
+# Environment variable override:
+# export MARK_MEMORY_DB=/path/to/memory.db
 ```
 
 ## What It Solves

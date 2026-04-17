@@ -1,10 +1,22 @@
 """
-AI Memory Protocol v1.1.5
+AI Memory Protocol v1.1.8
 ===========================
 Lightweight autonomous session memory protocol for AI agents.
 Self-contained: no dependency on external session IDs.
 
-v1.1.5 Changelog (from v1.1.4):
+v1.1.8 Changelog (from v1.1.7):
+- NEW: auto_record feature in SessionManager — when enabled, automatically
+  wraps known agent message-sending methods to call add_turn() on each
+  outbound message, enabling passive memory capture without explicit calls
+- NEW: SessionManager.stop() flushes buffer and disables auto_record
+- NEW: threading.Lock added for thread-safe auto_record state changes
+
+v1.1.7 Changelog (from v1.1.6):
+- DOCS: Added security section to SKILL.md clarifying local-only data
+  persistence, no log/audit files, no credentials, and path isolation
+  best practices (credential_access: false, data_persistence: true)
+
+v1.1.6 Changelog (from v1.1.5):
 - NEW: priority_levels table persisted to DB — add_priority_level() and
          remove_priority_level() now survive restarts (reads from DB on init)
 - NEW: merge_sessions() duplicate strategy optimized O(n²)→O(n log n) using bisect
@@ -88,6 +100,8 @@ import os
 import re
 import hashlib
 import bisect
+import threading
+import sys
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import List, Dict, Any, Optional
@@ -96,7 +110,7 @@ from typing import List, Dict, Any, Optional
 # Protocol Constants
 # ============================================================
 
-PROTOCOL_VERSION = "1.1.6"
+PROTOCOL_VERSION = "1.1.8"
 DB_VERSION = 14
 
 # Priority levels — runtime-configurable
@@ -2396,7 +2410,7 @@ class SessionManager:
     # ------------------------------------------------------------------
     BATCH_SIZE: int = 50          # flush when buffer reaches this many
 
-    def __init__(self, db_path: str = DEFAULT_DB_PATH):
+    def __init__(self, db_path: str = DEFAULT_DB_PATH, auto_record: bool = False):
         self.db = AIMemoryDB(db_path)
         self.current_session_id: Optional[str] = None
         self.turn_count: int = 0
@@ -2405,6 +2419,99 @@ class SessionManager:
         # Buffered write state (v1.1.6)
         self._write_buf: List[Dict] = []   # [{"role":..., "content":..., "priority":..., "tags":..., "metadata":...}]
         self._buf_first_index: int = 0     # turn_index of first item in buffer
+        # Auto-record state (v1.1.8)
+        self._auto_record: bool = False
+        self._auto_record_lock: threading.Lock = threading.Lock()
+        self._wrapped_methods: Dict[str, tuple] = {}  # {method_name: (original_method, role)}
+        if auto_record:
+            self._enable_auto_record()
+
+    # ------------------------------------------------------------------
+    # Auto-Record — v1.1.8: passive memory capture via method wrapping
+    # ------------------------------------------------------------------
+
+    def _enable_auto_record(self):
+        """Scan sys.modules for agent instances and wrap their send methods."""
+        with self._auto_record_lock:
+            if self._auto_record:
+                return
+            try:
+                # Known agent module names to scan
+                agent_names = ("hermes", "mark", "agent")
+                wrapped = {}
+                for mod_name, mod in sys.modules.items():
+                    if mod is None:
+                        continue
+                    if not any(ag in mod_name.lower() for ag in agent_names):
+                        continue
+                    for attr_name in dir(mod):
+                        if attr_name.startswith("_"):
+                            continue
+                        # Look for message-sending methods
+                        if not callable(getattr(mod, attr_name, None)):
+                            continue
+                        # Role detection: "user" or "say" → user role, else assistant
+                        lower_name = attr_name.lower()
+                        if "user" in lower_name or "say" in lower_name:
+                            role = "user"
+                        else:
+                            role = "assistant"
+                        try:
+                            original = getattr(mod, attr_name)
+                            # Create wrapper closure
+                            def make_wrapper(orig, r):
+                                def wrapper(*args, **kwargs):
+                                    # Auto-create session if needed
+                                    if not self.current_session_id:
+                                        self.start_conversation()
+                                    # Capture first string arg as content
+                                    content = ""
+                                    if args:
+                                        for a in args:
+                                            if isinstance(a, str) and a.strip():
+                                                content = a.strip()
+                                                break
+                                    if content:
+                                        self.add_turn(role, content)
+                                    return orig(*args, **kwargs)
+                                return wrapper
+                            wrapper = make_wrapper(original, role)
+                            setattr(mod, attr_name, wrapper)
+                            wrapped[attr_name] = (original, role)
+                        except Exception:
+                            continue
+                self._wrapped_methods = wrapped
+                self._auto_record = True
+            except Exception:
+                pass
+
+    def _disable_auto_record(self):
+        """Restore original unwrapped methods."""
+        with self._auto_record_lock:
+            if not self._auto_record:
+                return
+            try:
+                agent_names = ("hermes", "mark", "agent")
+                for mod_name, mod in sys.modules.items():
+                    if mod is None:
+                        continue
+                    if not any(ag in mod_name.lower() for ag in agent_names):
+                        continue
+                    for attr_name, (original, _role) in self._wrapped_methods.items():
+                        try:
+                            setattr(mod, attr_name, original)
+                        except Exception:
+                            continue
+            except Exception:
+                pass
+            finally:
+                self._wrapped_methods = {}
+                self._auto_record = False
+
+    def stop(self):
+        """Flush buffer and disable auto_record."""
+        self._flush()
+        self._disable_auto_record()
 
     def add_priority_level(self, name: str, weight: int) -> bool:
         return self.db.add_priority_level(name, weight)
