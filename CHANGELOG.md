@@ -1,6 +1,16 @@
 # MAMP Changelog
 
-## v1.1.5 (current)
+## v1.2.1 (current)
+
+### Security Fixes (to clear clawhub warnings)
+
+- **DEFAULT_DB_PATH reverted to cwd-only** — `./mark_memory.db` in current working directory, matching SKILL.md "local-only" description. No more platform-aware system paths.
+- **MARK_MEMORY_DB env var still respected** — users can override with `export MARK_MEMORY_DB=/your/path.db`
+- **platform_info persistence removed** — `_PLATFORM_INFO` (hostname, python_executable, arch, container) is no longer written to the SQLite DB
+- **LOCK/LOG/AUDIT paths changed to relative** — `./session_gc.lock`, `./session_gc.log`, `./session_gc_audit.log`
+- **DB_VERSION 15 → 16** (migration 15 reversed; platform_info table no longer created)
+
+## v1.1.5
 
 ### New Features
 
