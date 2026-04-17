@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Demo: AI Memory Protocol v1.1.9 - Run with stdlib + sqlite3 only."""
+"""Demo: AI Memory Protocol v1.2.0 - Run with stdlib + sqlite3 only."""
 
 import sys
 import os
@@ -10,7 +10,7 @@ import time
 # Load the actual protocol
 sys.path.insert(0, os.path.dirname(__file__))
 from importlib.util import spec_from_file_location, module_from_spec
-spec = spec_from_file_location("protocol", "ai_memory_protocol_v1.1.9.py")
+spec = spec_from_file_location("protocol", "ai_memory_protocol_v1.2.0.py")
 mod = module_from_spec(spec)
 spec.loader.exec_module(mod)
 
@@ -91,7 +91,7 @@ def test_heartbeat():
 
 
 def main():
-    print("=== AI Memory Protocol v1.1.9 Demo ===\n")
+    print("=== AI Memory Protocol v1.2.0 Demo ===\n")
 
     results = [
         test_basic_search(),
