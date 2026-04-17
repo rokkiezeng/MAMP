@@ -1,12 +1,14 @@
-# AI Memory Protocol
+# Mark AI Memory Protocol (MAMP)
 
 A lightweight, self-contained session memory protocol for AI agents.
 
-**Problem solved**: Every AI conversation starts fresh. This protocol gives AI agents persistent, searchable memory using SQLite — zero dependencies, runs anywhere.
+**Problem solved**: Every AI conversation starts fresh. MAMP gives AI agents persistent, searchable memory using SQLite — zero external dependencies, runs anywhere.
 
 ## Quick Start
 
 ```bash
+git clone <repo>
+cd MAMP
 python3 demo.py   # runs 5 demos, shows PASS/FAIL
 ```
 
@@ -21,25 +23,32 @@ python3 demo.py   # runs 5 demos, shows PASS/FAIL
 ## Usage
 
 ```python
-from ai_memory_protocol_v1_1_5 import SessionManager
+import sys
+sys.path.insert(0, '.')
+from importlib.util import spec_from_file_location, module_from_spec
+spec = spec_from_file_location("mamp", "ai_memory_protocol_v1.1.5.py")
+mod = module_from_spec(spec)
+spec.loader.exec_module(mod)
 
-sm = SessionManager()
+sm = mod.SessionManager('.')
 sid = sm.start_conversation()
 sm.add_turn("user", "I prefer dark mode")
 sm.add_turn("assistant", "Got it")
 count = sm.search_count("dark mode")       # → 1
-results = sm.search("dark mode", limit=5)   # → matching turns
+results = sm.search("dark mode", limit=5)  # → matching turns
 s = sm.get_session_extended(sid)           # → full session
 ```
+
+Or use `demo.py` as a working reference.
 
 ## Project Structure
 
 ```
 ai_memory_protocol_v1.1.5.py   ← protocol implementation
-demo.py                        ← run this first
+demo.py                        ← working demo (reference)
 CHANGELOG_v1.1.5.md           ← full changelog
-iteration_guide.md            ← how we iterate
-LICENSE                        ← MIT-0 (public domain equivalent)
+iteration_guide.md             ← how we iterate
+LICENSE                        ← MIT-0
 ```
 
 ## License
