@@ -2,8 +2,11 @@
 name: mamp
 description: Mark AI Memory Protocol — persistent, searchable session memory for AI agents. SQLite-only, zero external dependencies.
 author: LeoTseng
-version: 1.1.7
+version: 1.1.6
 license: MIT-0
+security:
+  credential_access: false  # Local SQLite only, no external services or credentials
+  data_persistence: true     # Writes to a local .db file on disk
 ---
 
 # MAMP — Mark AI Memory Protocol
@@ -34,10 +37,11 @@ spec.loader.exec_module(mod)
 
 # Default: writes to ./mark_memory.db in current directory
 sm = mod.SessionManager()
-# Or specify path explicitly:
+# Or specify path explicitly (recommended):
 sm = mod.SessionManager(db_path="./memory.db")
 # Or via environment variable:
 # export MARK_MEMORY_DB=/path/to/memory.db
+# (overrides default and db_path parameter)
 
 # Start a conversation
 sid = sm.start_conversation()
@@ -62,3 +66,36 @@ c = sm.search_count("topic", tag_filter=["finance"])
 ## What It Solves
 
 AI forgets everything each conversation. MAMP makes memory persistent, searchable, and structured — without any external service, API key, or dependency beyond SQLite.
+
+## Security Notes
+
+**Default behavior — local directory only:**
+
+- DB file written to `./mark_memory.db` in the current working directory
+- No system directories are touched
+- No log files, audit files, or hidden state files are written
+- No network access, no external services
+
+**Pass an explicit path to isolate data:**
+
+```python
+sm = mod.SessionManager(db_path="/your/specific/path/memory.db")
+```
+
+**Environment variable override:**
+
+```bash
+export MARK_MEMORY_DB=/your/specific/path/memory.db
+```
+
+This takes precedence over both the default and any `db_path` argument.
+
+**Permissions awareness:**
+
+- The DB file contains your conversation history in plaintext
+- Ensure the directory has appropriate access controls
+- If multiple agents run on the same host with the same path, they share memory — use different paths per agent to isolate
+
+**No credentials stored:**
+
+MAMP uses no API keys, tokens, or secrets. It is a pure local SQLite store.
