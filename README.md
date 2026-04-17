@@ -46,7 +46,7 @@ Or use `demo.py` as a working reference.
 ```
 ai_memory_protocol_v1.1.5.py   ← protocol implementation
 demo.py                        ← working demo (reference)
-CHANGELOG_v1.1.5.md           ← full changelog
+CHANGELOG.md           ← full changelog
 iteration_guide.md             ← how we iterate
 LICENSE                        ← MIT-0
 ```
